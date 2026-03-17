@@ -1,24 +1,11 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useFinance } from "../contexts/FinanceContext";
+import { useMarche } from "../contexts/MarcheContext";
 
 // =============================================================================
 // MOCK DATA — remplacez par des appels API quand Laravel est prêt
 // =============================================================================
-
-const STATS = [
-  { label: "Budget Total",      value: "142 500 000 MAD", icon: "💰", color: "#3b82f6", delta: "+3.2% ce mois"   },
-  { label: "Marchés Actifs",    value: "38",              icon: "📋", color: "#10b981", delta: "+5 nouveaux"     },
-  { label: "Engagements",       value: "89 300 000 MAD",  icon: "📊", color: "#f59e0b", delta: "62.7% du budget" },
-  { label: "Échéances Proches", value: "7",               icon: "⏰", color: "#ef4444", delta: "Dans 7 jours"    },
-];
-
-const RECENT_MARCHES = [
-  { id: "M-2025-001", objet: "Réhabilitation RN6",          montant: 12400000, statut: "En cours",    type: "Travaux"     },
-  { id: "M-2025-002", objet: "Étude impact RP403",           montant: 980000,   statut: "Attribution", type: "Études"      },
-  { id: "M-2025-003", objet: "Fourniture signalisation",     montant: 3200000,  statut: "Visé",        type: "Fournitures" },
-  { id: "M-2025-004", objet: "Mission contrôle Fès-Oujda",  montant: 7100000,  statut: "Clôturé",     type: "Services"    },
-  { id: "M-2025-005", objet: "Entretien RR510",             montant: 5650000,  statut: "En cours",    type: "Travaux"     },
-];
 
 const ACTIVITES = [
   { icon: "✅", text: "Marché M-2025-003 visé par le contrôle",       time: "Il y a 2h"   },
@@ -48,14 +35,14 @@ function StatCard({ label, value, icon, color, delta }) {
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        background:   "var(--card-bg, #fff)",
-        border:       `1px solid ${hov ? color : "var(--card-border, #e2e8f0)"}`,
+        background:   "#1e3a8a",
+        border:       `1px solid ${hov ? "rgba(255,255,255,0.26)" : "rgba(255,255,255,0.14)"}`,
         borderRadius: 14,
         padding:      "20px 22px",
         display:      "flex",
         alignItems:   "center",
         gap:          16,
-        boxShadow:    hov ? `0 8px 24px ${color}22` : "0 2px 8px rgba(0,0,0,0.06)",
+        boxShadow:    hov ? "0 10px 28px rgba(0,0,0,0.35)" : "0 2px 10px rgba(0,0,0,0.25)",
         transform:    hov ? "translateY(-3px)" : "none",
         transition:   "all 0.22s ease",
         cursor:       "default",
@@ -63,23 +50,24 @@ function StatCard({ label, value, icon, color, delta }) {
     >
       <div style={{
         width: 48, height: 48, borderRadius: 12, flexShrink: 0,
-        background: `${color}18`,
-        border:     `1px solid ${color}30`,
+        background: "rgba(255,255,255,0.12)",
+        border:     "1px solid rgba(255,255,255,0.18)",
         display:    "flex", alignItems: "center", justifyContent: "center",
         fontSize:   "1.4rem",
+        color: "#fff",
       }}>
         {icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "1.2px",
-          textTransform: "uppercase", color: "var(--text-secondary, #64748b)", marginBottom: 4 }}>
+          textTransform: "uppercase", color: "#fff", opacity: 0.85, marginBottom: 4 }}>
           {label}
         </div>
-        <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--text, #1e293b)",
+        <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#fff",
           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {value}
         </div>
-        <div style={{ fontSize: "0.7rem", color, fontWeight: 600, marginTop: 3 }}>
+        <div style={{ fontSize: "0.7rem", color: "#fff", fontWeight: 600, marginTop: 3, opacity: 0.92 }}>
           {delta}
         </div>
       </div>
@@ -103,7 +91,46 @@ function StatusBadge({ statut }) {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { totals } = useFinance();
+  const { marches, stats } = useMarche();
   const [hovRow, setHovRow] = useState(null);
+
+  const kpis = useMemo(() => {
+    const BLUE_CIEL = "#38bdf8";
+    const fmtMoney = (n) =>
+      `${Number(n || 0).toLocaleString("fr-MA", { maximumFractionDigits: 0 })} MAD`;
+
+    return [
+      {
+        label: "Budget Total",
+        value: fmtMoney(totals.dotation),
+        icon: "💰",
+        color: BLUE_CIEL,
+        delta: `${totals.txPaye.toFixed(1)}% payé`,
+      },
+      {
+        label: "Marchés Actifs",
+        value: String(stats.actifs),
+        icon: "📋",
+        color: BLUE_CIEL,
+        delta: `${stats.total} au total`,
+      },
+      {
+        label: "Engagements",
+        value: fmtMoney(totals.engage),
+        icon: "📊",
+        color: BLUE_CIEL,
+        delta: `${totals.txEngage.toFixed(1)}% du budget`,
+      },
+      {
+        label: "Échéances Proches",
+        value: "—",
+        icon: "⏰",
+        color: BLUE_CIEL,
+        delta: "À connecter (Schedule)",
+      },
+    ];
+  }, [stats.actifs, stats.total, totals.dotation, totals.engage, totals.txEngage, totals.txPaye]);
 
   const card = {
     background:   "var(--card-bg, #fff)",
@@ -112,14 +139,28 @@ export default function Dashboard() {
     overflow:     "hidden",
   };
 
+  const tableCard = {
+    background: "#1e3a8a",
+    border: "1px solid rgba(255,255,255,0.14)",
+    borderRadius: 14,
+    overflow: "hidden",
+  };
+
   const th = {
     fontSize: "0.6rem", fontWeight: 800, letterSpacing: "1.4px",
-    textTransform: "uppercase", color: "var(--text-secondary, #64748b)",
+    textTransform: "uppercase", color: "#fff", opacity: 0.85,
   };
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 4px",
-      fontFamily: "var(--font, 'Outfit', system-ui, sans-serif)" }}>
+    <div
+      aria-label={user?.name ? `Dashboard de ${user.name}` : "Dashboard"}
+      style={{
+        maxWidth: 1200,
+        margin: "0 auto",
+        padding: "0 4px",
+        fontFamily: "var(--font, 'Outfit', system-ui, sans-serif)",
+      }}
+    >
 
       {/* ── Header ── */}
       <div style={{ marginBottom: 28 }}>
@@ -127,20 +168,12 @@ export default function Dashboard() {
           color: "var(--text, #1e293b)", letterSpacing: "-0.02em" }}>
           Tableau de Bord
         </h1>
-        <p style={{ margin: "6px 0 0", fontSize: "0.85rem", color: "var(--text-secondary, #64748b)" }}>
-          Bienvenue,{" "}
-          <strong style={{ color: "var(--accent-color, #3b82f6)" }}>{user?.name}</strong>
-          {" "}—{" "}
-          {new Date().toLocaleDateString("fr-MA", {
-            weekday: "long", year: "numeric", month: "long", day: "numeric",
-          })}
-        </p>
       </div>
 
       {/* ── Stat cards ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))",
         gap: 16, marginBottom: 28 }}>
-        {STATS.map((s) => <StatCard key={s.label} {...s} />)}
+        {kpis.map((s) => <StatCard key={s.label} {...s} />)}
       </div>
 
       {/* ── Main grid: table + activités ── */}
@@ -148,29 +181,29 @@ export default function Dashboard() {
         alignItems: "start" }}>
 
         {/* ── Marchés récents ── */}
-        <div style={card}>
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--card-border,#e2e8f0)",
+        <div style={tableCard}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.14)",
             display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h2 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700,
-              color: "var(--text, #1e293b)" }}>Marchés Récents</h2>
-            <span style={{ fontSize: "0.72rem", color: "var(--text-secondary,#64748b)",
-              fontWeight: 600, background: "var(--card-border,#e2e8f0)",
+              color: "#fff" }}>Marchés Récents</h2>
+            <span style={{ fontSize: "0.72rem", color: "#fff",
+              fontWeight: 600, background: "rgba(255,255,255,0.14)",
               padding: "2px 10px", borderRadius: 20 }}>
-              {RECENT_MARCHES.length} marchés
+              {marches.length} marchés
             </span>
           </div>
 
           {/* Table header */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1.3fr 1fr 1fr",
-            padding: "10px 20px", background: "rgba(0,0,0,0.02)",
-            borderBottom: "1px solid var(--card-border,#e2e8f0)" }}>
+            padding: "10px 20px", background: "rgba(255,255,255,0.08)",
+            borderBottom: "1px solid rgba(255,255,255,0.14)" }}>
             {["Référence","Objet","Montant","Type","Statut"].map((h) => (
               <div key={h} style={th}>{h}</div>
             ))}
           </div>
 
           {/* Rows */}
-          {RECENT_MARCHES.map((m, i) => (
+          {stats.top5.map((m, i) => (
             <div key={m.id}
               onMouseEnter={() => setHovRow(m.id)}
               onMouseLeave={() => setHovRow(null)}
@@ -178,50 +211,60 @@ export default function Dashboard() {
                 display:             "grid",
                 gridTemplateColumns: "1fr 2fr 1.3fr 1fr 1fr",
                 padding:             "13px 20px",
-                borderBottom: i < RECENT_MARCHES.length - 1
-                  ? "1px solid var(--card-border,#e2e8f0)" : "none",
-                background:   hovRow === m.id ? "rgba(59,130,246,0.03)" : "transparent",
+                borderBottom: i < stats.top5.length - 1
+                  ? "1px solid rgba(255,255,255,0.12)" : "none",
+                background:   hovRow === m.id ? "rgba(255,255,255,0.06)" : "transparent",
                 transition:   "background 0.15s",
                 alignItems:   "center",
                 cursor:       "default",
               }}
             >
               <span style={{ fontSize: "0.72rem", fontWeight: 700,
-                color: "var(--accent-color,#3b82f6)", fontFamily: "monospace" }}>
+                color: "rgba(255,255,255,0.92)", fontFamily: "monospace" }}>
                 {m.id}
               </span>
-              <span style={{ fontSize: "0.8rem", color: "var(--text,#1e293b)", fontWeight: 500,
+              <span style={{ fontSize: "0.8rem", color: "#fff", fontWeight: 500,
                 paddingRight: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {m.objet}
               </span>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary,#64748b)", fontWeight: 600 }}>
+              <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>
                 {fmt(m.montant)}
               </span>
-              <span style={{ fontSize: "0.72rem", color: "var(--text-secondary,#64748b)" }}>
+              <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.82)" }}>
                 {m.type}
               </span>
               <StatusBadge statut={m.statut} />
             </div>
           ))}
+
+          {stats.top5.length === 0 && (
+            <div style={{
+              padding: "18px 20px",
+              color: "rgba(255,255,255,0.85)",
+              fontSize: "0.8rem",
+            }}>
+              Aucun marché pour le moment. Ajoutez-en dans « Gestion Marché ».
+            </div>
+          )}
         </div>
 
         {/* ── Activités récentes ── */}
-        <div style={card}>
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--card-border,#e2e8f0)" }}>
+        <div style={tableCard}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.14)" }}>
             <h2 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700,
-              color: "var(--text,#1e293b)" }}>Activité Récente</h2>
+              color: "#fff" }}>Activité Récente</h2>
           </div>
           <div style={{ padding: "8px 0" }}>
             {ACTIVITES.map((a, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12,
                 padding: "12px 20px",
                 borderBottom: i < ACTIVITES.length - 1
-                  ? "1px solid var(--card-border,#e2e8f0)" : "none" }}>
+                  ? "1px solid rgba(255,255,255,0.12)" : "none" }}>
                 <span style={{ fontSize: "1.1rem", flexShrink: 0, marginTop: 1 }}>{a.icon}</span>
                 <div>
-                  <div style={{ fontSize: "0.78rem", color: "var(--text,#1e293b)",
+                  <div style={{ fontSize: "0.78rem", color: "#fff",
                     fontWeight: 500, lineHeight: 1.4 }}>{a.text}</div>
-                  <div style={{ fontSize: "0.68rem", color: "var(--text-secondary,#64748b)",
+                  <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.78)",
                     marginTop: 3 }}>{a.time}</div>
                 </div>
               </div>

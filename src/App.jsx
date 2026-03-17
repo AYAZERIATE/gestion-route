@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 // ── Contexts ──────────────────────────────────────────────────────────────────
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider  } from "./contexts/AuthContext";
+import { FinanceProvider } from "./contexts/FinanceContext";
+import { MarcheProvider } from "./contexts/MarcheContext";
 
 // ── Layout ────────────────────────────────────────────────────────────────────
 import MainLayout from "./components/MainLayout";
@@ -33,8 +35,10 @@ import Dashboard from "./pages/Dashboard";                  // src/pages/Dashboa
 
 export default function App() {
   return (
+    <AuthProvider>
     <ThemeProvider>      {/* outermost — Login/Register also get the theme */}
-      <AuthProvider>
+      <FinanceProvider>
+        <MarcheProvider>
         <BrowserRouter>
           <Routes>
 
@@ -65,7 +69,9 @@ export default function App() {
 
           </Routes>
         </BrowserRouter>
-      </AuthProvider>
+        </MarcheProvider>
+      </FinanceProvider>
     </ThemeProvider>
+    </AuthProvider>
   );
 }

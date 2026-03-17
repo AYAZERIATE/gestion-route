@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
+import { useMarche } from "../contexts/MarcheContext";
 
 // ─── inline styles — no external CSS file needed ───────────────────────────
 const FONT = "'DM Sans', 'Segoe UI', system-ui, sans-serif";
@@ -251,6 +252,7 @@ function Toast({ message, type, onDone }) {
 
 // ─── MAIN COMPONENT ────────────────────────────────────────────────────────
 export default function MarketForm() {
+  const { addMarche } = useMarche();
   const [formData, setFormData] = useState({
     nom: "", type: "", objet: "", montant: "", avancement: "",
   });
@@ -262,8 +264,19 @@ export default function MarketForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Saved:", formData);
+    const id = `M-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
+    addMarche({
+      id,
+      objet: [formData.nom, formData.objet].filter(Boolean).join(" — "),
+      type: formData.type,
+      statut: "En cours",
+      montant: formData.montant,
+      avancement: formData.avancement,
+      beneficiaire: "",
+      loiFinance: "",
+    });
     showToast("Marché enregistré avec succès");
+    setFormData({ nom: "", type: "", objet: "", montant: "", avancement: "" });
   };
 
   const exportToExcel = () => {

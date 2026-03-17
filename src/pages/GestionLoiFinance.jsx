@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as XLSX from 'xlsx';
+import { useFinance } from '../contexts/FinanceContext';
 
 // ─────────────────────────────────────────────────────────────
 // THEME TOKENS
@@ -260,29 +261,11 @@ const parseDate = (v) => {
 const isValidDate = (v) => { const d = parseDate(v); return d && !isNaN(d.getTime()); };
 
 // ─────────────────────────────────────────────────────────────
-// ICONS
-// ─────────────────────────────────────────────────────────────
-const SunIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="5"/>
-    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-  </svg>
-);
-const MoonIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-  </svg>
-);
-
-// ─────────────────────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────────────────────
 const GestionLoiFinance = () => {
+  const { addRubrique, deleteRubrique } = useFinance();
 
-  const [theme,            setTheme]            = useState(() => localStorage.getItem('glf_theme') || 'dark');
   const [formData,         setFormData]         = useState({ ...EMPTY });
   const [entries,          setEntries]          = useState([]);
   const [errors,           setErrors]           = useState({});
@@ -291,19 +274,13 @@ const GestionLoiFinance = () => {
   const [btnValiderHover,  setBtnValiderHover]  = useState(false);
   const [btnExportHover,   setBtnExportHover]   = useState(false);
   const [btnResetHover,    setBtnResetHover]    = useState(false);
-  const [toggleHover,      setToggleHover]      = useState(false);
 
-  const T = THEMES[theme];
-  const isDark = theme === 'dark';
+  const T = THEMES.dark;
 
   const inputEls = useRef({});
   const setRef = useCallback((name) => (node) => {
     if (node) inputEls.current[name] = node;
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('glf_theme', theme);
-  }, [theme]);
 
   const focusAt = useCallback((idx) => {
     const clamped = Math.max(0, Math.min(idx, EDITABLE.length - 1));
@@ -392,7 +369,18 @@ const GestionLoiFinance = () => {
   const handleValider = (ev) => {
     if (ev) ev.preventDefault();
     if (validateForm()) {
-      setEntries(prev => [...prev, { ...formData, _id: Date.now() }]);
+      const entryId = Date.now();
+      const rubriqueId = String(entryId);
+
+      addRubrique({
+        id: rubriqueId,
+        chapitre: formData.rubrique || formData.numeroDepense || `Entrée #${entries.length + 1}`,
+        dotation: formData.montantGlobal,
+        engage: formData.montantOrdonnance,
+        paye: formData.dernierDecompte,
+      });
+
+      setEntries(prev => [...prev, { ...formData, _id: entryId, _rubriqueId: rubriqueId }]);
       showToast(`✓ Entrée #${entries.length + 1} validée et ajoutée au tableau !`);
       focusAt(0);
     } else {
@@ -424,6 +412,8 @@ const GestionLoiFinance = () => {
   };
 
   const handleDelete = (id) => {
+    const found = entries.find(e => e._id === id);
+    if (found?._rubriqueId) deleteRubrique(found._rubriqueId);
     setEntries(prev => prev.filter(e => e._id !== id));
     showToast('Entrée supprimée.');
   };
@@ -553,49 +543,6 @@ const GestionLoiFinance = () => {
 
         {/* ── Hero ── */}
         <div style={{ position:'relative', textAlign:'center', marginBottom:'2.4rem' }}>
-
-          {/* Theme Toggle */}
-          <div style={{
-            position:'absolute', top:0, right:0,
-            display:'flex', alignItems:'center', gap:9,
-          }}>
-            <span style={{ fontSize:'0.68rem', fontWeight:600, letterSpacing:'0.9px', textTransform:'uppercase', color: T.toggleLabelColor, opacity:0.8 }}>
-              {isDark ? 'Mode Nuit' : 'Mode Jour'}
-            </span>
-            <button
-              type="button"
-              onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              onMouseEnter={() => setToggleHover(true)}
-              onMouseLeave={() => setToggleHover(false)}
-              aria-label={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
-              aria-pressed={isDark}
-              style={{
-                width:54, height:28, borderRadius:14, cursor:'pointer',
-                border:`1px solid ${T.toggleBorder}`,
-                background: T.toggleBg,
-                position:'relative', outline:'none',
-                boxShadow: toggleHover
-                  ? (isDark ? '0 0 0 3px rgba(56,189,248,0.18)' : '0 0 0 3px rgba(42,108,212,0.13)')
-                  : 'none',
-                transition:'background 0.35s, border-color 0.35s, box-shadow 0.2s',
-                display:'flex', alignItems:'center', padding:0,
-              }}
-            >
-              <span style={{
-                position:'absolute', top:4,
-                left: isDark ? 'calc(100% - 24px)' : '4px',
-                width:20, height:20, borderRadius:'50%',
-                background: T.toggleThumb,
-                boxShadow: T.toggleThumbShadow,
-                display:'flex', alignItems:'center', justifyContent:'center',
-                color: T.toggleIconColor,
-                transition:'left 0.32s cubic-bezier(0.34,1.56,0.64,1)',
-                animation: 'none',
-              }}>
-                {isDark ? <MoonIcon /> : <SunIcon />}
-              </span>
-            </button>
-          </div>
 
           <div style={{
             display:'inline-block', background: T.badgeBg, border:`1px solid ${T.badgeBorder}`,
